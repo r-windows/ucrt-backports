@@ -32,8 +32,9 @@ jobs:
           fetch-depth: 0
 
       - name: CI-Build
-        run: ./ci-build.sh
-        if: success()
+        run: |
+          cd $(cygpath ${GITHUB_WORKSPACE})
+          ./ci-build.sh
         shell: c:\rtools40\usr\bin\bash.exe --login {0}
 
       - name: "Upload binary package"
