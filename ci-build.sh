@@ -10,8 +10,10 @@ pacman --noconfirm -Scc
 pacman --noconfirm -Sy
 
 # Downgrades to be compatible with rtools
-pacman --noconfirm --needed -S git patch make unzip pactoys
-#pacman --noconfirm -S ${MINGW_PACKAGE_PREFIX}-{gcc,libtre,pkg-config,xz}
+pacman --noconfirm --needed -S git patch make unzip pactoys bsdtar xz
+
+# Some upstream DLL files
+pacman --noconfirm --needed -S mingw-w64-ucrt-x86_64-{xz,gcc-libs,libwinpthread,libiconv}
 
 # Avoid libssp dependency
 sed -i 's/-Wp,-D_FORTIFY_SOURCE=2//g' /etc/makepkg_mingw.conf
