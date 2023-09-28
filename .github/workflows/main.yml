@@ -1,0 +1,63 @@
+name: main
+
+on:
+  push:
+    paths:
+      - 'mingw-w64-*/*'
+  pull_request:
+
+run-name: ${{ github.event.head_commit.message || format('{0} [removal] ', inputs.remove_package) }}
+
+jobs:
+  build:
+    timeout-minutes: 600
+    strategy:
+      fail-fast: false
+      matrix:
+        include: [
+          { msystem: ucrt64, runner: windows-2022 }
+        ]
+    name: ${{ matrix.msystem }}
+    runs-on: ${{ github.event.inputs.remove_package && 'windows-2022' || matrix.runner }}
+    env:
+      BUILD_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+      MINGW_ARCH: ${{ matrix.msystem }}
+      PACMAN_REPOSITORY: ${{ matrix.msystem }}-backports
+    steps:
+
+      - uses: r-windows/install-rtools@master
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: CI-Build
+        run: ./ci-build.sh
+        if: success()
+        shell: c:\rtools40\usr\bin\bash.exe --login {0}
+
+      - name: "Upload binary package"
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.msystem }}-backports
+          path: artifacts/
+
+  deploy:
+    name: Deploy to staging server
+    runs-on: ubuntu-22.04
+    needs: [build]
+    if: success() && github.ref == 'refs/heads/master'
+    steps:
+      - name: Get artifacts for deployment
+        uses: actions/download-artifact@v3
+      - id: deployment
+        name: Uploading files
+        run: |
+          ls -ltrR
+          eval $(ssh-agent -s)
+          ssh-add <(echo "$STAGINGKEY")
+          echo 'put -pr .' | sftp -oStrictHostKeyChecking=no "${STAGINGUSER}@ftp.opencpu.org:/msys2"
+          exit ${PIPESTATUS[1]}
+        env:
+          STAGINGUSER: ${{ secrets.STAGINGUSER }}
+          STAGINGKEY: ${{ secrets.STAGINGKEY }}
